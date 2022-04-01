@@ -22,23 +22,23 @@ mp4 = "mp4"
 txt = "txt"
 
 # Блок для создания файла с данными result.json
-# result = {}
-# for index, folder in enumerate(full_paths):
-#     result[index + 1] = {jpg: [], mp4: [], txt: ""}
-#     if os.path.isdir(folder):
-#         dir_files = os.listdir(folder)
-#         for file in dir_files:
-#             if f".{jpg}" in file:
-#                 result[index + 1][jpg].append(os.path.join(folder, file))
-#             if f".{mp4}" in file:
-#                 result[index + 1][mp4].append(os.path.join(folder, file))
-#             if f".{txt}" in file:
-#                 with open(os.path.join(folder, file), encoding="utf-8") as f:
-#                     read_txt = f.read()
-#                 result[index + 1][txt] = read_txt
-# result_json = json.dumps(result, ensure_ascii=False)
-# with open('result.json', 'w', encoding="utf-8") as f:
-#     f.write(result_json)
+result = {}
+for index, folder in enumerate(full_paths):
+    result[index + 1] = {jpg: [], mp4: [], txt: ""}
+    if os.path.isdir(folder):
+        dir_files = os.listdir(folder)
+        for file in dir_files:
+            if f".{jpg}" in file:
+                result[index + 1][jpg].append(os.path.join(folder, file))
+            if f".{mp4}" in file:
+                result[index + 1][mp4].append(os.path.join(folder, file))
+            if f".{txt}" in file:
+                with open(os.path.join(folder, file), encoding="utf-8") as f:
+                    read_txt = f.read()
+                result[index + 1][txt] = read_txt
+result_json = json.dumps(result, ensure_ascii=False)
+with open('result.json', 'w', encoding="utf-8") as f:
+    f.write(result_json)
 
 
 result = json.load(open(os.path.join('result.json'), 'r', encoding='utf-8'))
@@ -96,7 +96,6 @@ async def main():
                 for elem in jpg_lst:
                     try:
                         await client.send_file(chat_name, elem)
-                        result[key][jpg] = []
                     except errors.FloodWaitError as e:
                         result_json = json.dumps(result, ensure_ascii=False)
                         with open('result.json', 'w', encoding="utf-8") as f:
@@ -104,10 +103,10 @@ async def main():
                         get_time(e.seconds)
                         time.sleep(e.seconds)
                         await client.send_file(chat_name, elem)
+                    result[key][jpg] = []
                 if txt_value:
                     try:
                         await client.send_message(chat_name, txt_value)
-                        result[key][txt] = ""
                     except errors.FloodWaitError as e:
                         result_json = json.dumps(result, ensure_ascii=False)
                         with open('result.json', 'w', encoding="utf-8") as f:
@@ -115,6 +114,7 @@ async def main():
                         get_time(e.seconds)
                         time.sleep(e.seconds)
                         await client.send_message(chat_name, txt_value)
+                    result[key][txt] = ""
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
