@@ -40,7 +40,6 @@ result_json = json.dumps(result, ensure_ascii=False)
 with open('result.json', 'w', encoding="utf-8") as f:
     f.write(result_json)
 
-
 result = json.load(open(os.path.join('result.json'), 'r', encoding='utf-8'))
 client.start()
 
@@ -52,69 +51,43 @@ def get_time(delay):
     print(f"{time_now.strftime(fmt)} - Have to sleep {delay} seconds. End to - {time_delta.strftime(fmt)}")
 
 
+async def flood_waiter(action, result):
+    try:
+        await action()
+    except errors.FloodWaitError as e:
+        result_json = json.dumps(result, ensure_ascii=False)
+        with open('result.json', 'w', encoding="utf-8") as f:
+            f.write(result_json)
+        get_time(e.seconds)
+        time.sleep(e.seconds)
+        await action()
+
+
 async def main():
     async with client:
         await client.get_dialogs()
         for key, value in result.items():
             if result[key]:
-                try:
-                    await client.send_message(chat_name, f"#{str(key)}")
-                except errors.FloodWaitError as e:
-                    result_json = json.dumps(result, ensure_ascii=False)
-                    with open('result.json', 'w', encoding="utf-8") as f:
-                        f.write(result_json)
-                    get_time(e.seconds)
-                    print('Have to sleep', e.seconds, 'seconds')
-                    time.sleep(e.seconds)
-                    await client.send_message(chat_name, f"#{str(key)}")
+                await flood_waiter(lambda: client.send_message(chat_name, f"#{str(key)}"), result)
                 mp4_lst = value.get(mp4)
                 jpg_lst = value.get(jpg)
                 txt_value = value.get(txt)
                 for elem in mp4_lst:
                     file_stats = os.stat(elem)
                     if file_stats.st_size / (1024 * 1024) > 50:
-                        try:
-                            await client.send_message(chat_name, f"Большой видео файл - не буду грузить\n{elem}")
-                        except errors.FloodWaitError as e:
-                            result_json = json.dumps(result, ensure_ascii=False)
-                            with open('result.json', 'w', encoding="utf-8") as f:
-                                f.write(result_json)
-                            get_time(e.seconds)
-                            time.sleep(e.seconds)
-                            await client.send_message(chat_name, f"Большой видео файл - не буду грузить\n{elem}")
+                        await flood_waiter(
+                            lambda: client.send_message(chat_name, f"Большой видео файл - не буду грузить\n{elem}"),
+                            result)
                     else:
-                        try:
-                            await client.send_file(chat_name, elem)
-                        except errors.FloodWaitError as e:
-                            result_json = json.dumps(result, ensure_ascii=False)
-                            with open('result.json', 'w', encoding="utf-8") as f:
-                                f.write(result_json)
-                            get_time(e.seconds)
-                            time.sleep(e.seconds)
-                            await client.send_file(chat_name, elem)
+                        await flood_waiter(lambda: client.send_file(chat_name, elem), result)
                     result[key][mp4] = []
                 for elem in jpg_lst:
-                    try:
-                        await client.send_file(chat_name, elem)
-                    except errors.FloodWaitError as e:
-                        result_json = json.dumps(result, ensure_ascii=False)
-                        with open('result.json', 'w', encoding="utf-8") as f:
-                            f.write(result_json)
-                        get_time(e.seconds)
-                        time.sleep(e.seconds)
-                        await client.send_file(chat_name, elem)
+                    await flood_waiter(lambda: client.send_file(chat_name, elem), result)
                     result[key][jpg] = []
                 if txt_value:
-                    try:
-                        await client.send_message(chat_name, txt_value)
-                    except errors.FloodWaitError as e:
-                        result_json = json.dumps(result, ensure_ascii=False)
-                        with open('result.json', 'w', encoding="utf-8") as f:
-                            f.write(result_json)
-                        get_time(e.seconds)
-                        time.sleep(e.seconds)
-                        await client.send_message(chat_name, txt_value)
+                    await flood_waiter(lambda: client.send_message(chat_name, txt_value), result)
                     result[key][txt] = ""
+
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
